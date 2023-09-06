@@ -1,6 +1,9 @@
+mod score;
+
+use crate::score::Score;
 use serde::Deserialize;
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct CsfMeta {
@@ -16,7 +19,8 @@ pub struct CsfMeta {
 pub struct CsfRoot {
     pub root: PathBuf,
     pub meta: CsfMeta,
-    data: HashMap<String, String>,
+    pub scores: Vec<Score>,
+    pub data: HashMap<String, String>,
 }
 
 impl CsfRoot {
@@ -29,10 +33,21 @@ impl CsfRoot {
             anyhow::bail!("data directory does not exist or is not a directory");
         }
 
-        let scores = root.join("scores");
-        if !scores.is_dir() {
+        let scores_path = root.join("scores");
+        let scores = if !scores_path.is_dir() {
             anyhow::bail!("scores directory does not exist or is not a directory");
-        }
+        } else {
+            let data_names = get_data_names(&root)?;
+            let mut scores = Vec::new();
+
+            for path in walk_dir(&scores_path)? {
+                let score_str = std::fs::read_to_string(path)?;
+                let score = Score::from_str(score_str.as_str(), &data_names)?;
+                scores.push(score);
+            }
+
+            scores
+        };
 
         let audio_path = root.join(&meta.audio_file_path);
         if !audio_path.is_file() {
@@ -42,13 +57,14 @@ impl CsfRoot {
         Ok(Self {
             root,
             meta,
+            scores,
             data: HashMap::new(),
         })
     }
 
     pub fn new_eager(root: PathBuf) -> anyhow::Result<Self> {
         let mut this = Self::new(root)?;
-        this.data = this.load_data()?;
+        this.data = this.load_all_data()?;
         Ok(this)
     }
 
@@ -66,9 +82,10 @@ impl CsfRoot {
         }
     }
 
-    pub fn load_data(&self) -> anyhow::Result<HashMap<String, String>> {
+    pub fn load_all_data(&self) -> anyhow::Result<HashMap<String, String>> {
         let data_path = self.root.join("data");
         let mut data = HashMap::new();
+
         for path in walk_dir(&data_path)? {
             let name = path.strip_prefix(&data_path)?.to_str().unwrap().to_string();
             let data_str = std::fs::read_to_string(path)?;
@@ -94,4 +111,17 @@ fn walk_dir(path: &PathBuf) -> anyhow::Result<Vec<PathBuf>> {
     }
 
     Ok(paths)
+}
+
+fn get_data_names(root: &Path) -> anyhow::Result<Vec<String>> {
+    let data_path = root.join("data");
+    let mut names = Vec::new();
+
+    for path in walk_dir(&data_path)? {
+        let name = path.strip_prefix(&data_path)?;
+        let name = name.to_str().unwrap();
+        names.push(name.to_string());
+    }
+
+    Ok(names)
 }
