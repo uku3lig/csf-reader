@@ -1,3 +1,4 @@
+pub mod play;
 pub mod score;
 
 use crate::score::Score;
