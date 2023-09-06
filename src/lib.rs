@@ -1,4 +1,4 @@
-mod score;
+pub mod score;
 
 use crate::score::Score;
 use serde::Deserialize;
