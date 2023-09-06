@@ -8,7 +8,7 @@ pub struct CsfMeta {
     pub bpm: usize,
     #[serde(rename = "AudioFilePath")]
     pub audio_file_path: String,
-    #[serde(rename = "AudioOffset")]
+    #[serde(rename = "AudioOffsetSec")]
     pub audio_offset: f32,
 }
 
