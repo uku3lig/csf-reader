@@ -1,4 +1,5 @@
 use serde::Deserialize;
+use std::collections::HashMap;
 use std::path::PathBuf;
 
 #[derive(Debug, Clone, Deserialize)]
@@ -15,6 +16,7 @@ pub struct CsfMeta {
 pub struct CsfRoot {
     pub root: PathBuf,
     pub meta: CsfMeta,
+    data: HashMap<String, String>,
 }
 
 impl CsfRoot {
@@ -37,7 +39,17 @@ impl CsfRoot {
             anyhow::bail!("audio file does not exist or is not a file");
         }
 
-        Ok(Self { root, meta })
+        Ok(Self {
+            root,
+            meta,
+            data: HashMap::new(),
+        })
+    }
+
+    pub fn new_eager(root: PathBuf) -> anyhow::Result<Self> {
+        let mut this = Self::new(root)?;
+        this.data = this.load_data()?;
+        Ok(this)
     }
 
     pub fn get_audio_path(&self) -> PathBuf {
@@ -45,8 +57,41 @@ impl CsfRoot {
     }
 
     pub fn find_data(&self, name: &str) -> std::io::Result<String> {
-        let path = self.root.join("data").join(name);
-
-        std::fs::read_to_string(path)
+        match self.data.get(name) {
+            Some(data) => Ok(data.clone()),
+            None => {
+                let path = self.root.join("data").join(name);
+                std::fs::read_to_string(path)
+            }
+        }
     }
+
+    pub fn load_data(&self) -> anyhow::Result<HashMap<String, String>> {
+        let data_path = self.root.join("data");
+        let mut data = HashMap::new();
+        for path in walk_dir(&data_path)? {
+            let name = path.strip_prefix(&data_path)?.to_str().unwrap().to_string();
+            let data_str = std::fs::read_to_string(path)?;
+            data.insert(name, data_str);
+        }
+
+        Ok(data)
+    }
+}
+
+fn walk_dir(path: &PathBuf) -> anyhow::Result<Vec<PathBuf>> {
+    let mut paths = Vec::new();
+
+    for entry in std::fs::read_dir(path)? {
+        let entry = entry.unwrap();
+        let path = entry.path();
+
+        if path.is_dir() {
+            paths.extend(walk_dir(&path)?);
+        } else {
+            paths.push(path);
+        }
+    }
+
+    Ok(paths)
 }
