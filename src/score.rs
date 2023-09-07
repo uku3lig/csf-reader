@@ -1,23 +1,28 @@
 use anyhow::{anyhow, bail, Result};
 
+#[derive(Debug, Clone)]
 pub struct Score {
     pub measures: Vec<Measure>,
 }
 
+#[derive(Debug, Clone)]
 pub struct Measure {
     pub commands: Vec<MeasureCommand>,
 }
 
+#[derive(Debug, Clone)]
 pub enum MeasureCommand {
     DisplayCommand(DisplayCommand),
     Command(Command),
 }
 
+#[derive(Debug, Clone)]
 pub enum DisplayCommand {
     DataDisplayCommand(String),
     InlineDisplayCommand(String),
 }
 
+#[derive(Debug, Copy, Clone)]
 pub enum Command {
     MoveTo(i32, i32),
     ZIndex(i32),

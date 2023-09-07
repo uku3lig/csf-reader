@@ -17,6 +17,7 @@ pub struct CsfMeta {
 }
 
 #[non_exhaustive]
+#[derive(Debug, Clone)]
 pub struct CsfRoot {
     pub root: PathBuf,
     pub meta: CsfMeta,
