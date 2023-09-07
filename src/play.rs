@@ -10,7 +10,8 @@ use rodio::{Decoder, OutputStream, Source};
 use std::collections::VecDeque;
 use std::fs::File;
 use std::io::BufReader;
-use std::time::{Duration, Instant};
+use std::time::Duration;
+use tokio::time::Instant;
 
 pub struct IndexedScore {
     pub measures: Vec<DisplayMeasure>,
@@ -92,7 +93,14 @@ impl DisplayItem {
     }
 }
 
-pub fn play(root: CsfRoot) -> anyhow::Result<()> {
+pub fn play_sync(root: CsfRoot) -> anyhow::Result<()> {
+    tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()?
+        .block_on(async { play(root).await })
+}
+
+pub async fn play(root: CsfRoot) -> anyhow::Result<()> {
     let delay = Duration::from_secs_f32(root.meta.audio_offset);
     let sec_per_measure = Duration::from_secs_f32(60.0 / root.meta.bpm as f32 * 4.0);
 
@@ -120,11 +128,15 @@ pub fn play(root: CsfRoot) -> anyhow::Result<()> {
         Terminal::new(CrosstermBackend::new(stdout))?
     };
 
-    let _stream = play_audio(&root)?;
+    let framerate = Duration::from_secs_f32(1.0 / 60.0);
     let start = Instant::now();
-    std::thread::sleep(delay);
+    let mut interval = tokio::time::interval_at(start + delay, framerate);
+
+    let _stream = play_audio(&root)?;
 
     loop {
+        interval.tick().await;
+
         let current_measure =
             (Instant::now() - start).as_secs_f32() / sec_per_measure.as_secs_f32();
         let measure_index = current_measure as usize;
