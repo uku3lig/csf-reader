@@ -1,4 +1,4 @@
-use anyhow::{anyhow, bail, Result};
+use anyhow::{bail, Context, Result};
 
 #[derive(Debug, Clone)]
 pub struct Score {
@@ -74,21 +74,21 @@ fn parse_display_command(line: &str, data_names: &[String]) -> Result<DisplayCom
 fn parse_command(line: &str) -> Result<Command> {
     let line = &line[1..]; // strip initial `#`
     let mut parts = line.split_whitespace();
-    let command = parts.next().ok_or(anyhow!("empty command"))?;
+    let command = parts.next().context("empty command")?;
 
     match command {
         "MOVETO" => {
-            let x = parts.next().ok_or(anyhow!("empty x position"))?.parse()?;
-            let y = parts.next().ok_or(anyhow!("empty y position"))?.parse()?;
+            let x = parts.next().context("empty x position")?.parse()?;
+            let y = parts.next().context("empty y position")?.parse()?;
             Ok(Command::MoveTo(x, y))
         }
         "ZINDEX" => {
-            let z = parts.next().ok_or(anyhow!("empty z index"))?.parse()?;
+            let z = parts.next().context("empty z index")?.parse()?;
             Ok(Command::ZIndex(z))
         }
         "FLIP" => {
-            if parts.next().ok_or(anyhow!("empty flip direction"))? == "vertical" {
-                let b = match parts.next().ok_or(anyhow!("empty flip value"))? {
+            if parts.next().context("empty flip direction")? == "vertical" {
+                let b = match parts.next().context("empty flip value")? {
                     "on" => true,
                     "off" => false,
                     _ => bail!("invalid flip value"),
