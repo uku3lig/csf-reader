@@ -102,7 +102,7 @@ pub fn play_sync(root: CsfRoot) -> anyhow::Result<()> {
 
 pub async fn play(root: CsfRoot) -> anyhow::Result<()> {
     let delay = Duration::from_secs_f32(root.meta.audio_offset);
-    let sec_per_measure = Duration::from_secs_f32(60.0 / root.meta.bpm as f32 * 4.0);
+    let sec_per_measure = 60.0 / root.meta.bpm as f32 * 4.0;
 
     let measure_count = root
         .scores
@@ -129,16 +129,15 @@ pub async fn play(root: CsfRoot) -> anyhow::Result<()> {
     };
 
     let framerate = Duration::from_secs_f32(1.0 / 60.0);
-    let start = Instant::now();
-    let mut interval = tokio::time::interval_at(start + delay, framerate);
+    let start = Instant::now() + delay;
+    let mut interval = tokio::time::interval_at(start, framerate);
 
     let _stream = play_audio(&root)?;
 
     loop {
         interval.tick().await;
 
-        let current_measure =
-            (Instant::now() - start).as_secs_f32() / sec_per_measure.as_secs_f32();
+        let current_measure = (Instant::now() - start).as_secs_f32() / sec_per_measure;
         let measure_index = current_measure as usize;
 
         if measure_index > measure_count {
