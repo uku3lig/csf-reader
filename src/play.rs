@@ -11,7 +11,7 @@ use std::collections::VecDeque;
 use std::fs::File;
 use std::io::BufReader;
 use std::time::Duration;
-use tokio::time::Instant;
+use tokio::time::{Instant, MissedTickBehavior};
 
 pub struct IndexedScore {
     pub measures: Vec<DisplayMeasure>,
@@ -131,6 +131,7 @@ pub async fn play(root: CsfRoot) -> anyhow::Result<()> {
     let framerate = Duration::from_secs_f32(1.0 / 60.0);
     let start = Instant::now() + delay;
     let mut interval = tokio::time::interval_at(start, framerate);
+    interval.set_missed_tick_behavior(MissedTickBehavior::Skip); // in case we don't render at 60fps, just skip the not drawn frames
 
     let _stream = play_audio(&root)?;
 
